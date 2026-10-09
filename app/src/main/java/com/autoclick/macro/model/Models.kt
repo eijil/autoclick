@@ -53,7 +53,7 @@ data class AppData(
     val barScalePercent: Int = PlanLimits.DEFAULT_BAR_SCALE,
     /** 悬浮条不透明度（百分比）。 */
     val barOpacityPercent: Int = PlanLimits.DEFAULT_BAR_OPACITY,
-    /** 悬浮条背景色，0xRRGGBB（不含透明度）。 */
+    /** 悬浮按钮待机（开始）时的底色，0xRRGGBB（不含透明度）。 */
     val barColor: Int = PlanLimits.DEFAULT_BAR_COLOR,
 ) {
     val selectedPlan: Plan? get() = plans.firstOrNull { it.id == selectedPlanId }
@@ -75,5 +75,5 @@ object PlanLimits {
     const val MIN_BAR_OPACITY = 20
     const val MAX_BAR_OPACITY = 100
     const val DEFAULT_BAR_OPACITY = 90
-    const val DEFAULT_BAR_COLOR = 0x1F2430
+    const val DEFAULT_BAR_COLOR = 0x2E9E5B
 }
