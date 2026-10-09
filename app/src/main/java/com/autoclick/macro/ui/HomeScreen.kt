@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -11,7 +12,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -21,7 +21,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CheckCircle
@@ -54,14 +53,18 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import kotlin.math.roundToInt
 import com.autoclick.macro.model.AppData
 import com.autoclick.macro.model.Plan
@@ -266,7 +269,7 @@ private fun BarCard(data: AppData, setup: SetupState, vm: MainViewModel, context
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Text("悬浮控制条", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             Text(
-                "悬浮条只有“开始/停止”，会执行下方“悬浮条当前方案”。拖动左侧 ⋮ 或空白处可移动；要关闭请回到本应用。",
+                "悬浮按钮是一个圆形的“开始/停止”键，会执行下方“悬浮条当前方案”。按住拖动即可移动；要关闭请回到本应用。",
                 style = MaterialTheme.typography.bodyMedium,
             )
             if (setup.barRunning) {
@@ -305,7 +308,7 @@ private fun BarCard(data: AppData, setup: SetupState, vm: MainViewModel, context
 }
 
 private val BAR_COLOR_PRESETS = listOf(
-    0x1F2430, 0x000000, 0xFFFFFF, 0x2E5BFF, 0x2E9E5B, 0xD64545, 0x8E44AD, 0xF2994A,
+    0x2E9E5B, 0x2E5BFF, 0x1F2430, 0x000000, 0xFFFFFF, 0x8E44AD, 0xF2994A, 0x00A6A6,
 )
 
 @Composable
@@ -315,31 +318,18 @@ private fun BarStyleSettings(data: AppData, vm: MainViewModel) {
     var hex by remember(data.barColor) { mutableStateOf("%06X".format(data.barColor)) }
 
     HorizontalDivider()
-    Text("悬浮条外观", fontWeight = FontWeight.Medium)
+    Text("悬浮按钮外观", fontWeight = FontWeight.Medium)
 
-    // 预览：与悬浮条同样的比例/颜色/透明度。
-    val previewColor = Color(0xFF000000.toInt() or data.barColor).copy(alpha = opacity / 100f)
-    val textColor = if (previewColor.copy(alpha = 1f).luminance() > 0.5f) Color(0xFF2A3340) else Color(0xFFE6ECF5)
-    Box(Modifier.fillMaxWidth().height(64.dp), contentAlignment = Alignment.CenterStart) {
-        Row(
-            modifier = Modifier
-                .clip(RoundedCornerShape((22 * scale / 100f).dp))
-                .background(previewColor)
-                .padding(start = (10 * scale / 100f).dp, end = (8 * scale / 100f).dp, top = (4 * scale / 100f).dp, bottom = (4 * scale / 100f).dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text("⋮", color = textColor.copy(alpha = 0.6f), fontSize = (18 * scale / 100f).sp)
-            Spacer(Modifier.width((6 * scale / 100f).dp))
-            Text(
-                "开始",
-                color = Color.White,
-                fontSize = (14 * scale / 100f).sp,
-                modifier = Modifier
-                    .clip(RoundedCornerShape((18 * scale / 100f).dp))
-                    .background(Color(0xFF2E9E5B))
-                    .padding(horizontal = (14 * scale / 100f).dp, vertical = (7 * scale / 100f).dp),
-            )
-        }
+    // 预览：与悬浮按钮同样的大小/颜色/透明度（左：待机“开始”，右：执行中“停止”）。
+    val startFill = Color(0xFF000000.toInt() or data.barColor)
+    val stopFill = Color(0xFFD64545)
+    Row(
+        modifier = Modifier.fillMaxWidth().height(72.dp),
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        PreviewRunButton(running = false, fill = startFill, scale = scale / 100f, alpha = opacity / 100f)
+        PreviewRunButton(running = true, fill = stopFill, scale = scale / 100f, alpha = opacity / 100f)
     }
 
     SliderRow(
@@ -359,7 +349,7 @@ private fun BarStyleSettings(data: AppData, vm: MainViewModel) {
         onFinish = { vm.setBarOpacity(opacity.roundToInt()) },
     )
 
-    Text("颜色", style = MaterialTheme.typography.bodyMedium)
+    Text("待机（开始）按钮颜色；执行中固定为红色", style = MaterialTheme.typography.bodyMedium)
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
         BAR_COLOR_PRESETS.forEach { rgb ->
             val selected = rgb == data.barColor
@@ -471,6 +461,36 @@ private fun PlanCard(
                     TextButton(onClick = onSelect) { Text("设为悬浮条当前方案") }
                 }
             }
+        }
+    }
+}
+
+/** 与悬浮按钮一致的预览：圆底 + 播放三角 / 停止方块。 */
+@Composable
+private fun PreviewRunButton(running: Boolean, fill: Color, scale: Float, alpha: Float) {
+    val iconColor = if (fill.luminance() > 0.6f) Color(0xFF2A3340) else Color.White
+    Canvas(Modifier.size((56 * scale).dp).alpha(alpha)) {
+        val d = size.minDimension
+        val c = center
+        drawCircle(fill, radius = d / 2f, center = c)
+        if (running) {
+            val half = d * 0.17f
+            drawRoundRect(
+                iconColor,
+                topLeft = Offset(c.x - half, c.y - half),
+                size = Size(half * 2, half * 2),
+                cornerRadius = CornerRadius(d * 0.04f),
+            )
+        } else {
+            val half = d * 0.2f
+            val left = c.x - half * 0.5f
+            val path = Path().apply {
+                moveTo(left, c.y - half)
+                lineTo(left + half * 1.8f, c.y)
+                lineTo(left, c.y + half)
+                close()
+            }
+            drawPath(path, iconColor)
         }
     }
 }
