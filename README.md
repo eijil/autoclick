@@ -68,14 +68,15 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 
 ## 发布新版本
 
-在 `main` 分支、工作区干净时执行一条命令：
+全程在 GitHub 上完成，无需本地操作：
 
-```bash
-./scripts/release.sh 1.0.1
-```
+1. 把要发布的改动合并到 `main`。
+2. 打开仓库的 **Actions → Release → Run workflow**，分支选 `main`，填写版本号（如 `1.0.1`），点击运行。
+   命令行等价写法：`gh workflow run Release -f version=1.0.1`。
+3. 工作流会自动：更新 `app/build.gradle.kts` 的 `versionName` 与 `versionCode`（`主*10000 + 次*100 + 修订`）→ 运行单元测试并构建 APK → 把版本号提交到 `main` → 创建 `v1.0.1` tag 与 Release（附 APK 和自动生成的更新日志）。
 
-脚本会自动更新 `app/build.gradle.kts` 的 `versionName` 与 `versionCode`（`主*10000 + 次*100 + 修订`）、提交、打 `v1.0.1` tag 并推送；
-推送 tag 后 GitHub Actions（`.github/workflows/release.yml`）会运行单元测试、构建 APK 并创建 Release（附 APK 与自动生成的更新日志）。
+任何一步失败（如版本号格式不对、tag 已存在、测试不通过）都不会产生 tag 或 Release。
+也可以手动推送 `v*` tag 触发同一个工作流，此时 tag 必须与 `versionName` 一致。
 
 ## 项目结构
 
