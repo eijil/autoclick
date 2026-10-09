@@ -66,6 +66,17 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 - 方案在尺寸与记录不一致时不会执行（例如横竖屏切换后），请旋转回原方向，或确认后“按当前屏幕校准”。
 - 悬浮条以前台服务运行，通知栏有一条常驻通知，可从通知里“关闭悬浮条”。
 
+## 发布新版本
+
+在 `main` 分支、工作区干净时执行一条命令：
+
+```bash
+./scripts/release.sh 1.0.1
+```
+
+脚本会自动更新 `app/build.gradle.kts` 的 `versionName` 与 `versionCode`（`主*10000 + 次*100 + 修订`）、提交、打 `v1.0.1` tag 并推送；
+推送 tag 后 GitHub Actions（`.github/workflows/release.yml`）会运行单元测试、构建 APK 并创建 Release（附 APK 与自动生成的更新日志）。
+
 ## 项目结构
 
 ```

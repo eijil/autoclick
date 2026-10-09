@@ -22,6 +22,15 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
 
+      - name: Check tag matches versionName
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          NAME=$(sed -nE 's/.*versionName = "([^"]+)".*/\1/p' app/build.gradle.kts)
+          if [ "v$NAME" != "${{ github.ref_name }}" ]; then
+            echo "tag ${{ github.ref_name }} 与 app/build.gradle.kts 的 versionName ($NAME) 不一致" >&2
+            exit 1
+          fi
+
       - name: Unit tests
         run: ./gradlew testDebugUnitTest
 
